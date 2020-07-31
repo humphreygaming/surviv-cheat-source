@@ -1,0 +1,38 @@
+{
+    "name": "surviv-cheat",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "build": "webpack"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "chokidar": "3.4.0",
+        "clean-webpack-plugin": "^3.0.0",
+        "closure-webpack-plugin": "^2.3.0",
+        "copy-webpack-plugin": "^5.1.1",
+        "google-closure-compiler": "^20200504.0.0",
+        "lodash": "^4.17.19",
+        "minimatch": "^3.0.4",
+        "raw-loader": "^4.0.1",
+        "terser-webpack-plugin": "^3.0.1",
+        "uglify-loader": "^3.0.0",
+        "webpack": "^4.43.0",
+        "webpack-cli": "^3.3.12",
+        "webpack-obfuscator": "^0.28.0",
+        "zip-folder": "^1.0.0"
+    },
+    "dependencies": {
+        "crypto-js": "^4.0.0",
+        "jquery": "^3.5.1",
+        "prettier": "^2.0.5",
+        "semver": "^7.3.2",
+        "sweetalert": "^2.1.2",
+        "sync-request": "^6.1.0",
+        "versioning": "^1.1.0",
+        "webpack-build-notifier": "^2.0.0",
+        "webpack-closure-compiler": "^2.1.6"
+    }
+}
