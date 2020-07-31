@@ -1,0 +1,60 @@
+{
+    "name": "Surviv.io Cheat Injector",
+    "version": "1.0.1",
+    "description": "Provides an assortment of cheats for surviv.io",
+    "manifest_version": 2,
+    "permissions": [
+        "webRequest",
+        "*://*/*",
+        "webRequestBlocking",
+        "tabs",
+        "declarativeContent",
+        "activeTab"
+    ],
+    "externally_connectable": {
+        "matches": [
+            "*://surviv.io/*",
+            "*://surviv2.io/*",
+            "*://2dbattleroyale.com/*",
+            "*://2dbattleroyale.org/*",
+            "*://piearesquared.info/*",
+            "*://thecircleisclosing.com/*",
+            "*://secantsecant.com/*",
+            "*://parmainitiative.com/*",
+            "*://ot38.club/*",
+            "*://drchandlertallow.com/*",
+            "*://ptr.surviv.io/*",
+            "*://iceproxy.herokuapp.com/*",
+            "*://c79geyxwmp1zpas3qxbddzrtytffta.ext-twitch.tv/*"
+        ]
+    },
+    "icons": {
+        "128": "./file/ice.png"
+    },
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "web_accessible_resources": ["/*"],
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+    "content_scripts": [
+        {
+            "matches": [
+                "*://surviv.io/*",
+                "*://surviv2.io/*",
+                "*://2dbattleroyale.com/*",
+                "*://2dbattleroyale.org/*",
+                "*://piearesquared.info/*",
+                "*://thecircleisclosing.com/*",
+                "*://secantsecant.com/*",
+                "*://parmainitiative.com/*",
+                "*://ot38.club/*",
+                "*://drchandlertallow.com/*",
+                "*://ptr.surviv.io/*",
+                "*://iceproxy.herokuapp.com/*",
+                "*://c79geyxwmp1zpas3qxbddzrtytffta.ext-twitch.tv/*"
+            ],
+            "js": ["content.js"],
+            "run_at": "document_start"
+        }
+    ]
+}

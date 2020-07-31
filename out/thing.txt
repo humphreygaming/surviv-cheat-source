@@ -1,0 +1,3 @@
+output folder for the extension
+use this directory as some form of "testing" for the extension
+delete this txt file after reading as it is most likely unessesary
