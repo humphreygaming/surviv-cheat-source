@@ -781,7 +781,7 @@ var Cheat = class {
             lootB: /creator={type:\w+},this\.(\w+)=\[\],/g.exec(code),
             lootC: /=new \w+\.Pool\(\w+\),this\.(\w+)=null}var/g.exec(code),
             bullets: /\.createBullet\(\w+,this\.(\w+),/g.exec(code),
-            ui: /([a-zA-Z\_\-\$]+)\.hasCustomEmotes/g.exec(code)
+            ui: /[A-za-z].createBullet\([A-Za-z],this\.\w+,this\.(\w+)/g.exec(code)
         }
 
         var execNet = /this\.([a-zA-Z\_\-\$]+)\.([a-zA-Z\_\-\$]+)=\w+\.copy\((?:\w|\.)+\),this\.\w+\.([a-zA-Z\_\-\$]+)=\w+\.copy\((?:\w|\.)+\),\w+&&\(this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,.*?this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+/g.exec(
