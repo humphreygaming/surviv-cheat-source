@@ -103,7 +103,7 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "Loop",
-                    from: /var ([a-z_])=this\.(player)\.([a-zA-Z_][a-zA-Z_])\(\),/g,
+                    from: /var ([a-z_])=this\.(player)\.([a-zA-Z$_][a-zA-Z_])\(\),/g,
                     to:
                         "var $1 = this.$2.$3();" +
                         `try{if(!window.${key}.ready){window.${key}.init();};window.${key}.loop()}catch(e){console.log(e)};var `,
@@ -176,9 +176,9 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "Non-Dev Patch",
-                    from: /new ([a-zA-Z])\[([a-zA-Z])\]\("g",([a-zA-Z])\(([a-zA-Z])\)\)\(([a-zA-Z])\),/g,
+                    from: /new ([a-zA-Z])\[([a-zA-Z])\]\(([a-zA-Z]),([a-zA-Z])\(([a-zA-Z])\)\),([a-zA-Z])=([a-zA-Z])\(([a-zA-Z])\),/g,
                     to:
-                        'new $1[$2]("g", $3($4).replace(/icehacks|cheat|aimbot|auto|™|bot|esp|bump|grenade/gi, "fgiopdsiohrgFDSGRFg"))($5);var ',
+                        'new $1[$2]($3, $4($5).replace(/icehacks|cheat|aimbot|auto|™|bot|esp|bump|grenade/gi, "fgiopdsiohrgFDSGRFg")),$6=$7($8);var ',
                 },
                 {
                     name: "End Game",
