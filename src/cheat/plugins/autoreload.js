@@ -36,6 +36,8 @@ var Plugin = class {
     loop(obfuscate, scope, player, input, data, plugins) {
         if (data.selectedEnemy[0]) return
         if (player.action.type !== 0) return
+        //In case they are using bumpfire to shoot a non-auto weapon.
+        if (input.leftMouse) return
 
         var curWeapIdx = player[obfuscate.localData][obfuscate.weapIdx],
             weaps = player[obfuscate.localData][obfuscate.weapons],

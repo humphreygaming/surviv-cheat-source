@@ -1,7 +1,18 @@
 if (e == 3) {
-    var weap = sjs.data.items[sjs.scope.player[sjs.obfuscate.netData].weapType]
+    var IsSingleFireWeaponEquipped = () => {
+        var retVal = false;
+        try {
+            var weapIdx = sjs.scope.player[sjs.obfuscate.localData].weapIdx;
+            var weapName = sjs.scope.player[sjs.obfuscate.localData].weapons[weapIdx].type;
+            var weap = sjs.data.items[weapName];
+            retVal = weap.fireMode == "single";
+        }
+        catch(ex) {
+            console.error("IsSingleFireWeaponEquipped: Failed to check weapon",ex);
+        }
+        return retVal;
+    };
     t.inputs = t.inputs.concat(sjs.inputs)
-
     // Looking for new weaponIndex value
     ;(function () {
         if (sjs.obfuscate) {
@@ -21,18 +32,16 @@ if (e == 3) {
             })
         }
     })()
-
     if (
         (sjs.input.leftMouse &&
+            sjs.plugins.bump &&
+            sjs.plugins.bump.enabled &&
             (sjs.scope.player[sjs.obfuscate.localData][sjs.obfuscate.wepIdx] ==
                 2 ||
-                (weap && weap.fireMode && weap.fireMode == "single")) &&
-            sjs.plugins.bump &&
-            sjs.plugins.bump.enabled) ||
+                IsSingleFireWeaponEquipped())) ||
         t.inputs.includes(4)
     ) {
         t.shootHold = false
-        //t.shootStart = !sjs.shootStart;
         t.shootStart = true
     }
     sjs.shootStart = t.shootStart
