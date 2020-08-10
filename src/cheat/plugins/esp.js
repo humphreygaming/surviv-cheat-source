@@ -134,7 +134,11 @@ var Plugin = class {
                     return false
                 })
                 .forEach(obj => {
-                    pixi.beginFill(0xff0000, 0.3)
+                    if (obj.layer !== activePlayer.layer) { // if the object is inside a bunker and you're not etc, make the blast radius white
+                        pixi.beginFill(0xffffff, 0.3)
+                    } else {
+                        pixi.beginFill(0xff0000, 0.2) 
+                    }
                     pixi.drawCircle(
                         (obj.pos.x - activePlayer.pos.x) * 16,
                         (activePlayer.pos.y - obj.pos.y) * 16,
