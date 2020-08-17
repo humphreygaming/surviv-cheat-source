@@ -85,12 +85,13 @@ var Plugin = class {
         this._enabled = t
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
-        if (plugins.binds.test("switch")) return
-
-        var curWeapIdx = player[obfuscate.localData][obfuscate.weapIdx],
-            weaps = player[obfuscate.localData][obfuscate.weapons],
-            curWeap = weaps[curWeapIdx]
+    loop(dataAccessor, player, input, data, plugins) {
+        if(plugins.binds.test("switch")) {
+            return;
+        }
+        var curWeapIdx = dataAccessor.GetPlayerWeapIdx(player);
+        var weaps = dataAccessor.GetPlayerWeapons(player);
+        var curWeap = weaps[curWeapIdx];
         var sniper = () => {
             var shouldSwitch = gun => {
                 var s = false
@@ -103,11 +104,13 @@ var Plugin = class {
                         data.guns[gun].fireDelay >=
                             (typeof this.option("speed") == "number"
                                 ? this.option("speed") / 100
-                                : 0.45)
-                } catch (e) {}
-                return s
+                                : 0.45);
+                }
+                catch (e) {
+                   console.error("Sniper Switch",e);
+                }
+                return s;
             }
-
             this.keys = [
                 weaps["1"].type !== "" && shouldSwitch(weaps["1"].type)
                     ? "EquipOtherGun"
@@ -121,40 +124,43 @@ var Plugin = class {
                     : "EquipOtherGun",
                 "EquipMelee",
                 "EquipMelee",
-            ]
-
-            if (curWeap.ammo !== this.ammo[curWeapIdx].ammo) {
-                if (
-                    curWeap.ammo < this.ammo[curWeapIdx].ammo &&
+            ];
+            if(curWeap.ammo !== this.ammo[curWeapIdx].ammo) {
+                if (curWeap.ammo < this.ammo[curWeapIdx].ammo &&
                     shouldSwitch(curWeap.type) &&
-                    curWeap.type == this.ammo[curWeapIdx].type
-                )
+                    curWeap.type == this.ammo[curWeapIdx].type) 
+                {
                     input.addInput(this.keys[curWeapIdx])
+                }
                 this.ammo[curWeapIdx].ammo = curWeap.ammo
                 this.ammo[curWeapIdx].type = curWeap.type
             }
         }
-
-        if (this.option("mode") == "SniperSwitch™") {
+        if(this.option("mode") == "SniperSwitch™") {
             sniper()
-        } else if (this.option("mode") == "SmartSwitch™") {
-            let choices = []
-
-            if (data.autoAttack) return
-
-            for (let i = 0; i < 2; i++) {
+        }
+        else if(this.option("mode") == "SmartSwitch™") {
+            let choices = [];
+            if(data.autoAttack) {
+                return;
+            }
+            for(let i = 0; i < 2; i++) {
                 let enemy = data.selectedEnemy[0],
                     gun = data.guns[weaps[i].type],
-                    bullet
-                if (gun) {
-                    bullet = data.bullets[gun.bulletType]
+                    bullet;
+                if(gun) {
+                    bullet = data.bullets[gun.bulletType];
                 }
-                if (!enemy || !bullet) break
+                if(!enemy || !bullet) {
+                    break;
+                }
+                var enemyPos = dataAccessor.GetPlayerPosition(enemy);
+                var playerPos = dataAccessor.GetPlayerPosition(player);
                 let distance = this.calcDistance(
-                    enemy.pos.x,
-                    enemy.pos.y,
-                    player.pos.x,
-                    player.pos.y
+                    enemyPos.x,
+                    enemyPos.y,
+                    playerPos.x,
+                    playerPos.y
                 )
                 choices.push({
                     dps:
@@ -170,20 +176,19 @@ var Plugin = class {
                     gun,
                 })
             }
-
-            if (choices.length == 2) {
+            if(choices.length == 2) {
                 choices = choices.filter(function (e) {
                     return e.hittable && e.hasAmmo
-                })
+                });
                 choices = choices.sort(function (a, b) {
                     return b.dps - a.dps
-                })
-
-                if (!choices[0]) return
-
+                });
+                if(!choices[0]) {
+                    return;
+                }
                 input.addInput(
                     choices[0].key == 0 ? "EquipPrimary" : "EquipSecondary"
-                )
+                );
             }
         }
     }

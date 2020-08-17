@@ -33,42 +33,35 @@ var Plugin = class {
         this._enabled = t
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
-        if (data.selectedEnemy[0]) return
-        if (player.action.type !== 0) return
+    loop(dataAccessor, player, input, data, plugins) {
+        if(data.selectedEnemy[0]) {
+            return;
+        }
+        if(player.action.type !== 0) {
+            return;
+        }
         //In case they are using bumpfire to shoot a non-auto weapon.
-        if (input.leftMouse) return
-
-        var curWeapIdx = player[obfuscate.localData][obfuscate.weapIdx],
-            weaps = player[obfuscate.localData][obfuscate.weapons],
-            inventory = player[obfuscate.localData].inventory,
-            curWeap = weaps[curWeapIdx]
-
-        var gun1 = weaps[0].type != "" ? data.guns[weaps[0].type] : false
-        var gun2 = weaps[1].type != "" ? data.guns[weaps[1].type] : false
-
-        if (
-            gun1 &&
+        if(input.leftMouse) {
+            return;
+        }
+        var weaps = dataAccessor.GetPlayerWeapons(player);
+        var gun1 = weaps[0].type != "" ? data.guns[weaps[0].type] : false;
+        var gun2 = weaps[1].type != "" ? data.guns[weaps[1].type] : false;
+        if(gun1 &&
             weaps[0].type.length > 0 &&
             weaps[0].ammo < gun1.maxClip &&
-            inventory[gun1.ammo] > 0
-        ) {
-            input.addInput("EquipPrimary")
-            input.addInput("Reload")
-
-            return
+            dataAccessor.PlayerHasItem(player, gun1.ammo)) 
+        {
+            input.addInput("EquipPrimary");
+            input.addInput("Reload");
         }
-
-        if (
-            gun2 &&
+        else if(gun2 &&
             weaps[1].type.length > 0 &&
             weaps[1].ammo < gun2.maxClip &&
-            inventory[gun2.ammo] > 0
-        ) {
-            input.addInput("EquipSecondary")
-            input.addInput("Reload")
-
-            return
+            dataAccessor.PlayerHasItem(player, gun2.ammo)) 
+        {
+            input.addInput("EquipSecondary");
+            input.addInput("Reload");
         }
     }
 }

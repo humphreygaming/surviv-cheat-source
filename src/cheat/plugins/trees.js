@@ -54,7 +54,7 @@ var Plugin = class {
         this._enabled = t
     }
 
-    loop(obfuscate, scope, player, input, data) {
+    loop(dataAccessor, player, input, data) {
         data.getObjects().forEach(obj => {
             if (obj.__type === data.data.Type.Building) {
                 if (obj.imgs.length > 1) {

@@ -34,39 +34,36 @@ var Plugin = class {
         this._enabled = t
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
-        var elapsed = (Date.now() - this.lastTime) / 1000
-
-        if (
-            3 !== player[obfuscate.localData][obfuscate.weapIdx] ||
+    loop(dataAccessor, player, input, data, plugins) {
+        var elapsed = (Date.now() - this.lastTime) / 1000;
+        if (3 !== dataAccessor.GetPlayerWeapIdx(player) ||
             player.throwableState !== "cook"
         )
             return (
                 (this.showing = false),
                 this.timer && this.timer.destroy(),
                 (this.timer = false)
-            )
-
-        var type = player[obfuscate.netData].weapType
+            );
+        var type = dataAccessor.GetPlayerWeaponType(player);
         var time = (data.items[type] || {}).fuseTime || 4
-
-        if (time > 60) return
-
-        if (elapsed > time) this.showing = false
-
-        if (!this.showing) {
-            if (this.timer) this.timer.destroy()
-
-            this.timer = new (Object.values(data.pieTimer)[0])()
-            scope.pixi.stage.addChild(this.timer.container)
-
-            this.timer.start("Grenade", 0, time)
-            this.showing = true
-            this.lastTime = Date.now()
-            return
+        if(time > 60) {
+            return;
         }
-
-        this.timer.update(elapsed - this.timer.elapsed, scope[obfuscate.camera])
+        if(elapsed > time) {
+            this.showing = false;
+        }
+        if(!this.showing) {
+            if(this.timer) {
+                this.timer.destroy();
+            }
+            this.timer = new (Object.values(data.pieTimer)[0])();
+            dataAccessor.Pixi().stage.addChild(this.timer.container);
+            this.timer.start("Grenade", 0, time);
+            this.showing = true;
+            this.lastTime = Date.now();
+            return;
+        }
+        this.timer.update(elapsed - this.timer.elapsed, dataAccessor.Camera());
     }
 }
 

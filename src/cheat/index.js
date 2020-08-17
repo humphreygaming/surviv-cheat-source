@@ -1,10 +1,8 @@
 window.$ = require("jquery")
-
 $("#news-block").html("<iframe src='https://chat-oven.glitch.me/'></iframe>")
 
 var swal = require("sweetalert")
 var versioning = require("versioning")
-
 if (typeof Object.assign !== "function") {
     // Must be writable: true, enumerable: false, configurable: true
     Object.defineProperty(Object, "assign", {
@@ -423,15 +421,110 @@ var Binds = class {
         return !!this.keys[k]
     }
 }
+
+//Handles accessing specific data within a scope. This allows us to have only one spot where data is accessed. If the path to specific data changes,
+//we will just change it here
+var DataAccessor = class {
+
+    Bullets() {
+        return this._scope[this._obfuscationKeys.bullets];
+    }
+
+    Pixi() {
+        return this._scope.pixi;
+    }
+
+    Camera() {
+        return this._scope[this._obfuscationKeys.camera];
+    }
+    
+    InputManager() {
+        return this._scope[this._obfuscationKeys.inputManager];
+    }
+
+    ObjectCreator() {
+        return this._scope[this._obfuscationKeys.objectCreator];
+    }
+
+    UiManager() {
+        return this._scope[this._obfuscationKeys.uiManager];
+    }
+
+    PlayerInfo() {
+        return this._scope[this._obfuscationKeys.players.barn][this._obfuscationKeys.players.info];
+    }
+
+    GetActiveLoot() {
+        return this._scope[this._obfuscationKeys.loot.barn][this._obfuscationKeys.loot.active];
+    }
+
+    GetPlayerHealth(player) {
+        return player[this._obfuscationKeys.localData][this._obfuscationKeys.health];
+    }
+
+    GetPlayerBoost(player) {
+        return player[this._obfuscationKeys.localData][this._obfuscationKeys.boost];
+    }
+
+    GetPlayerPosition(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.pos];
+    }
+
+    GetPlayerLayer(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.layer];
+    }
+
+    GetPlayerWeapIdx(player) {
+        return player[this._obfuscationKeys.localData][this._obfuscationKeys.weapIdx];
+    }
+
+    GetPlayerWeapons(player) {
+        return player[this._obfuscationKeys.localData][this._obfuscationKeys.weapons];
+    }
+
+    GetPlayerWeaponType(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.weapType];
+    }
+
+    GetPlayerNetData(player) {
+        return player[this._obfuscationKeys.netData];
+    }
+
+    GetPlayerDirection(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.dir];
+    }
+
+    IsPlayerDead(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.dead];
+    }
+
+    IsPlayerDowned(player) {
+        return player[this._obfuscationKeys.netData][this._obfuscationKeys.downed];
+    }
+
+    PlayerHasItem(player, item) {
+        return player[this._obfuscationKeys.localData][this._obfuscationKeys.inventory][item] > 0;
+    }
+
+    GetCurrentPlayer() {
+        return this._scope[this._obfuscationKeys.currentPlayer];
+    }
+
+    constructor(scope, obfuscationKeys) {
+        this._scope = scope;
+        this._obfuscationKeys = obfuscationKeys;
+    }
+
+}
+
 var Cheat = class {
-    constructor(script) {
-        this.plugins = {}
-        this.version = manifest.version
-        this.internal =
-            script ||
+    constructor() {
+        this.plugins = {};
+        this.version = manifest.version;
+        this.internal = 
             [...document.getElementsByTagName("script")].filter(
-                s => !!s.innerHTML.match(/webpackJsonp\(\[1\],\{/g)
-            )[0].innerHTML
+                s => !!s.innerHTML.match(/^var [a-z0-9_]+=\['/g)
+            )[0].innerHTML;
         this.ready = false
         this.inputs = []
         this.lastInputs = []
@@ -442,10 +535,10 @@ var Cheat = class {
                     x: 0,
                     y: 0,
                 }
-
                 window.isAiming = true
-                this.scope[this.obfuscate.inputManager].input.onMouseMove.call(
-                    this.scope[this.obfuscate.inputManager].input,
+                var inputManager = this.dataAccessor.InputManager();
+                inputManager.input.onMouseMove.call(
+                    inputManager.input,
                     {
                         clientX: pos.x,
                         clientY: pos.y,
@@ -454,18 +547,17 @@ var Cheat = class {
             },
             addInput: i => {
                 this.inputs.push(this.data.data.Input[this.ucfirst(i)])
-
                 this.uniq(this.inputs)
             },
             press: (key, timeout = 50) => {
-                if (!this.scope[this.obfuscate.inputManager].input.keys[key]) {
+                var inputManager = this.dataAccessor.InputManager();
+                if (!inputManager.input.keys[key]) {
                     setTimeout(() => {
-                        this.scope[this.obfuscate.inputManager].input.keys[
+                        inputManager.input.keys[
                             key
                         ] = true
                         setTimeout(() => {
-                            delete this.scope[this.obfuscate.inputManager].input
-                                .keys[key]
+                            delete inputManager.input.keys[key]
                         }, timeout)
                     }, 0)
                 }
@@ -484,8 +576,8 @@ var Cheat = class {
         this.data = {
             getObjects: () => {
                 return Object.values(
-                    this.scope[this.obfuscate.objectCreator].idToObj
-                )
+                    this.dataAccessor.ObjectCreator().idToObj
+                );
             },
             getEnemies: objects => {
                 return this.data
@@ -494,21 +586,22 @@ var Cheat = class {
                         p =>
                             (p &&
                                 p.__type === 1 &&
-                                !p[this.obfuscate.netData].dead &&
-                                !this.scope.player[this.obfuscate.netData]
-                                    .downed &&
+                                !this.dataAccessor.IsPlayerDead(p) &&
+                                !this.dataAccessor.IsPlayerDowned(this.dataAccessor.GetCurrentPlayer()) &&
                                 !this.data.isTeam(p.__id)) ||
                             (p.__type === 2
                                 ? objects &&
                                   p &&
                                   Math.sqrt(
                                       Math.pow(
-                                          p.pos.x - this.scope.player.pos.x,
+                                          this.dataAccessor.GetPlayerPosition(p).x 
+                                          - this.dataAccessor.GetPlayerPosition(this.dataAccessor.GetCurrentPlayer()).x,
                                           2
                                       ) +
                                           Math.pow(
-                                              p.pos.y - this.scope.player.pos.y,
-                                              2
+                                                this.dataAccessor.GetPlayerPosition(p).y 
+                                                - this.dataAccessor.GetPlayerPosition(this.dataAccessor.GetCurrentPlayer()).y,
+                                                2
                                           )
                                   ) <= 4 &&
                                   p.destructible &&
@@ -527,24 +620,19 @@ var Cheat = class {
                     )
             },
             isTeam: id => {
-                var info = this.scope[this.obfuscate.players.barn][
-                    this.obfuscate.players.info
-                ]
-
-                return info[id].teamId === info[this.scope.player.__id].teamId
+                var info = this.dataAccessor.PlayerInfo();
+                return info[id].teamId === info[this.dataAccessor.GetCurrentPlayer().__id].teamId;
             },
             checkId: id => {
-                var info = this.scope[this.obfuscate.players.barn][
-                    this.obfuscate.players.info
-                ]
-
-                return info[id]
+                var info = this.dataAccessor.PlayerInfo();
+                return info[id];
             },
             cantCollide: (Target, cust) => {
-                var t = Target.pos
-                var pos = (u = this.scope.player).pos,
-                    objects = this.scope[this.obfuscate.objectCreator].idToObj,
-                    collidableObjects = Object.keys(objects).filter(function (
+                var t = Target.pos;
+                var player = this.dataAccessor.GetCurrentPlayer();
+                var pos = this.dataAccessor.GetPlayerPosition(player);
+                var objects = this.dataAccessor.ObjectCreator().idToObj;
+                var collidableObjects = Object.keys(objects).filter(function (
                         n
                     ) {
                         var curObj = objects[n]
@@ -582,10 +670,9 @@ var Cheat = class {
                     (p.B.x = t.x),
                     (p.B.y = t.y)
                 var d = true
-                collidableObjects.forEach(function (n, e, t) {
-                    var i
-                    objects[n].layer !== u.layer ||
-                        objects[n].dead ||
+                collidableObjects.forEach((n, e, t) => {
+                    objects[n].layer !== this.dataAccessor.GetPlayerLayer(player) ||
+                        (this.dataAccessor.GetPlayerNetData(objects[n]) && this.dataAccessor.IsPlayerDead(objects[n])) ||
                         (void 0 !== objects[n].collider &&
                         void 0 !== objects[n].collider.min &&
                         void 0 !== objects[n].collider.max
@@ -634,36 +721,27 @@ var Cheat = class {
                                   p.B.x,
                                   p.B.y
                               ) <= objects[n].collider.rad && (d = false))
-                })
-                var u = this.scope.player
+                });
                 return !!d &&
                     function (curPlayer, enemy) {
-                        var t = calcDistance(curPlayer.pos, enemy.pos)
-                        if (
-                            curPlayer[this.obfuscate.netData].weapType &&
-                            this.data.items[
-                                curPlayer[this.obfuscate.netData].weapType
-                            ]
-                        ) {
-                            var o = this.data.items[
-                                curPlayer[this.obfuscate.netData].weapType
-                            ]
-                            var inRange = true
-                            if (isset(o.bulletType)) {
-                                var inRange =
-                                    t < this.data.bullets[o.bulletType].distance
+                        var distance = calcDistance(this.dataAccessor.GetPlayerPosition(curPlayer), this.dataAccessor.GetPlayerPosition(enemy));
+                        var curWeaponType = this.dataAccessor.GetPlayerWeaponType(curPlayer);
+                        var curWeapon = this.data.items[curWeaponType];
+                        if(curWeaponType && curWeapon) {
+                            var inRange = true;
+                            if(isset(curWeapon.bulletType)) {
+                                var inRange = distance < this.data.bullets[curWeapon.bulletType].distance;
                             }
-                            return inRange
+                            return inRange;
                         }
                         return true
-                    }.bind(this)(u, Target)
+                    }.bind(this)(player, Target)
                     ? true
                     : false
             },
         }
-        this.UI = new UI(this.version, this.plugins)
-
-        this.checkUpdate()
+        this.UI = new UI(this.version, this.plugins);
+        this.checkUpdate();
     }
 
     /**
@@ -671,9 +749,10 @@ var Cheat = class {
      * @param {object} plugin The plugin object to load.
      */
     addPlugin(plugin) {
-        this.plugins[plugin.name] = plugin
-
-        if (this.UI) this.UI.render()
+        this.plugins[plugin.name] = plugin;
+        if(this.UI) { 
+            this.UI.render();
+        }
     }
 
     /**
@@ -681,13 +760,13 @@ var Cheat = class {
      * @param {object|string} plugin The plugin object (or name) you want to remove.
      */
     removePlugin(plugin) {
-        if (typeof plugin == "object") {
-            delete this.plugins[plugin.name]
-        } else {
-            delete this.plugins[plugin]
+        if(typeof plugin == "object") {
+            delete this.plugins[plugin.name];
+        } 
+        else {
+            delete this.plugins[plugin];
         }
-
-        this.UI.render()
+        this.UI.render();
     }
 
     /**
@@ -701,60 +780,56 @@ var Cheat = class {
      * Called every Surviv update
      */
     loop() {
-        if (!this.ready || !this.scope || !this.UI) return
-
-        this.lastInputs = this.inputs
-        this.inputs = []
-        this.input.moveAngle = false
-        this.input.moveAngleOv = false
-
+        if(!this.ready || !this.scope || !this.UI) {
+            return;
+        }
+        this.lastInputs = this.inputs;
+        this.inputs = [];
+        this.input.moveAngle = false;
+        this.input.moveAngleOv = false;
+        var currentPlayer = this.dataAccessor.GetCurrentPlayer();
         Object.values(this.plugins).forEach(p => {
-            if (!p.enabled || p.dontLoop || typeof p.loop !== "function") return
+            if(!p.enabled || p.dontLoop || typeof p.loop !== "function") {
+                return;
+            }
             try {
                 p.loop(
-                    this.obfuscate,
-                    this.scope,
-                    this.scope.player,
+                    this.dataAccessor,
+                    currentPlayer,
                     this.input,
                     this.data,
                     this.plugins,
                     this.ready
-                )
-            } catch (e) {
-                console.log("FATAL (" + p.name + ") " + e + e.stack)
+                );
+            } 
+            catch (e) {
+                console.log("FATAL (" + p.name + ") " + e + e.stack);
             }
-        })
-
-        if (
-            this.healthLast !==
-            this.scope.player[this.obfuscate.localData][this.obfuscate.health]
-        ) {
-            this.healthLast = this.scope.player[this.obfuscate.localData][
-                this.obfuscate.health
-            ]
-            this.UI.health.html(Math.ceil(this.healthLast))
+        });
+        var currentHealth = this.dataAccessor.GetPlayerHealth(currentPlayer);
+        if (this.healthLast !== currentHealth) {
+            this.healthLast = currentHealth;
+            this.UI.health.html(Math.ceil(this.healthLast));
         }
-
-        this.inputs = unique(this.inputs)
-
+        this.inputs = unique(this.inputs);
         this.data.getEnemies().forEach(enemy => {
             enemy.posOldOld = enemy.posOld
-        })
-
-        this.scope.player.posOldOld = this.scope.player.posOld
+        });
+        currentPlayer.posOldOld = currentPlayer.posOld;
     }
 
     /**
      * So the plugins can reset for the next game.
      */
     end() {
+        var currentPlayer = this.dataAccessor.GetCurrentPlayer();
         Object.values(this.plugins).forEach(p => {
-            if (!p.enabled || typeof p.end !== "function") return
-
+            if(!p.enabled || typeof p.end !== "function") {
+                return;
+            }
             p.end(
-                this.obfuscate,
-                this.scope,
-                this.scope.player,
+                this.dataAccessor,
+                currentPlayer,
                 this.input,
                 this.data
             )
@@ -765,151 +840,127 @@ var Cheat = class {
      * Private: Retreive obfuscation keys.
      */
     _getKeys() {
-        let code = this.internal
-        console.log(code)
-        let matches = {
-            playersA: /\.Type\.Player,this\.(\w+)\./g.exec(code),
-            playersB: /this\.(\w+)={},this\.playerIds=\[\],/g.exec(code),
-            input: /this\.config=\w+,this\.(\w+)=\w+,this\.account=\w+}/g.exec(
-                code
-            ),
-            creator: /this\.(\w+)=new \w+\.Creator;/g.exec(code),
-            camera: /_TYPE\.CANVAS,this\.(\w+)=new \w+\.\w+,/g.exec(code),
-            netData: /this\.(\w+)={pos:\w+\.create/g.exec(code),
-            localData: /this\.([a-zA-Z\_\-\$]+)={\w+:100,/g.exec(code),
-            lootA: /\w+\.Type\.Loot,this\.(\w+)\.(\w+)/g.exec(code),
-            lootB: /creator={type:\w+},this\.(\w+)=\[\],/g.exec(code),
-            lootC: /=new \w+\.Pool\(\w+\),this\.(\w+)=null}var/g.exec(code),
-            bullets: /\.createBullet\(\w+,this\.(\w+),/g.exec(code),
-            ui: /[A-za-z].createBullet\([A-Za-z],this\.\w+,this\.(\w+)/g.exec(code)
-        }
-
-        var execNet = /this\.([a-zA-Z\_\-\$]+)\.([a-zA-Z\_\-\$]+)=\w+\.copy\((?:\w|\.)+\),this\.\w+\.([a-zA-Z\_\-\$]+)=\w+\.copy\((?:\w|\.)+\),\w+&&\(this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,.*?this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,this\.\w+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+/g.exec(
-            code
-        )
-        var execLoc = /\(this\.([a-zA-Z\_\-\$]+)\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+\),(?:\w|\.)+\&\&\(this\.[a-zA-Z\_\-\$]+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+\).*?this\.[a-zA-Z\_\-\$]+.*?\{.*?,this\.[a-zA-Z\_\-\$]+\.([a-zA-Z\_\-\$]+).*?;.*?this\.[a-zA-Z\_\-\$]+\.([a-zA-Z\_\-\$]+)=(?:\w|\.)+,.*?this\.[a-zA-Z\_\-\$]+\.([a-zA-Z\_\-\$]+)=\[\]/g.exec(
-            code
-        )
+        //These used to be obfuscated, but not with the latest version of obfuscation. They are hardcoded here for now.
         var data = {
-            pos: execNet[2],
-            dir: execNet[3],
-            //outift: execNet[4],
-            backpack: execNet[5],
-            helmet: execNet[6],
-            chest: execNet[7],
-            weapType: execNet[8],
-            layer: execNet[9],
-            dead: execNet[10],
-            downed: execNet[11],
-            health: execLoc[2],
-            boost: execLoc[3],
-            inventory: execLoc[4],
-            weapIdx: execLoc[5],
-            weapons: execLoc[6],
-        }
-
+            currentPlayer: 'm_activePlayer',
+            pos: 'm_pos',
+            dir: 'm_dir',
+            backpack: 'm_backpack',
+            helmet: 'm_helmet',
+            chest: 'm_chest',
+            weapType: 'm_curWeapType',
+            layer: 'm_layer',
+            dead: 'm_dead',
+            downed: 'm_downed',
+            health: 'm_health',
+            boost: 'm_boost',
+            inventory: 'm_inventory',
+            weapIdx: 'm_curWeapIdx',
+            weapons: 'm_weapons',
+        };
         let keys = {
-            netData: matches.netData[1],
-            localData: matches.localData[1],
-            camera: matches.camera[1],
-            objectCreator: matches.creator[1],
-            inputManager: matches.input[1],
+            netData: 'm_netData',
+            localData: 'm_localData',
+            camera: 'm_camera',
+            objectCreator: 'm_objectCreator',
+            inputManager: 'm_inputBinds',
             players: {
-                barn: matches.playersA[1],
-                info: matches.playersB[1],
+                barn: 'm_playerBarn',
+                info: 'm_playerInfo',
             },
             loot: {
-                barn: matches.lootA[1],
-                pool: matches.lootA[2],
-                array: matches.lootB[1],
-                active: matches.lootC[1],
+                barn: 'm_lootBarn',
+                pool: 'm_lootPool',
+                array: 'm_pool',
+                active: 'activeCount',
             },
-            bullets: matches.bullets[1],
-            ui: matches.ui[1]
-        }
-
-        Object.assign(keys, data)
-
-        return keys
+            bullets: 'm_bulletBarn',
+            ui: 'm_uiManager',
+        };
+        Object.assign(keys, data);
+        return keys;
     }
 
     /**
      * Run required setup actions
      */
     init() {
-        console.log("init passed00")
-
-        if (!this.internal || this.ready) return
-        console.log("init passed")
-        try {
-            window.webpackJsonp(
-                [0],
-                {
-                    webpack_inject: (w, e, get) => {
-                        this.data.GET = get
-                        this.data.guns = get("ad1c4e70")
-                        this.data.ammo = get("764654e6")
-                        this.data.skin = get("63d67e9d")
-                        this.data.melee = get("ccb6ad93")
-                        this.data.bullets = get("beeed8a4")
-                        this.data.throwable = get("035f2ecb")
-                        this.data.explosions = get("ea3b9366")
-                        this.data.objects = get("03f4982a")
-                        this.data.mergeDeep = get("1901e2d9").mergeDeep
-                        this.data.pieTimer = get("feb8fc30")
-
-                        this.data.items = this.data.mergeDeep(
-                            {},
-                            this.data.objects,
-                            this.data.throwable,
-                            this.data.guns,
-                            this.data.ammo,
-                            this.data.skin,
-                            this.data.melee,
-                            this.data.bullets
-                        )
-                        this.data.data = this.data.mergeDeep(
-                            get("8649e148"),
-                            get("989ad62a"),
-                            {
-                                Messages: get("300e2704"),
-                            }
-                        )
-
-                        console.log(this.data)
-
-                        return true
-                    },
-                },
-                ["webpack_inject"]
-            )
-
-            this.obfuscate = this._getKeys()
-            document.addEventListener("keydown",(e)=>{
-                if (e.code === "KeyX" && e.altKey ) {
-                    this.scope[this.obfuscate.ui].uiManager.quitGame()
-                }
-            })
-            this.ready = true
-        } catch (e) {
-            console.log("NON_FATAL", e)
-            return setTimeout(this.init, 20)
+        console.log("init passed00");
+        if (!this.internal || this.ready)  {
+            return;
         }
-
+        console.log("init passed");
+        try {
+            var func = {
+                webpack_inject: (w, e, get) => {
+                    this.data.GET = get
+                    this.data.guns = get("ad1c4e70")
+                    this.data.ammo = get("764654e6")
+                    this.data.skin = get("63d67e9d")
+                    this.data.melee = get("ccb6ad93")
+                    this.data.bullets = get("beeed8a4")
+                    this.data.throwable = get("035f2ecb")
+                    this.data.explosions = get("ea3b9366")
+                    this.data.objects = get("03f4982a")
+                    this.data.mergeDeep = get("1901e2d9").mergeDeep
+                    this.data.pieTimer = get("feb8fc30")
+                    this.data.items = this.data.mergeDeep(
+                        {},
+                        this.data.objects,
+                        this.data.throwable,
+                        this.data.guns,
+                        this.data.ammo,
+                        this.data.skin,
+                        this.data.melee,
+                        this.data.bullets
+                    )
+                    this.data.data = this.data.mergeDeep(
+                        get("8649e148"),
+                        get("989ad62a"),
+                        {
+                            Messages: get("300e2704"),
+                        }
+                    );
+                    this.data.selectedEnemy = [];
+                    return true
+                },
+            };
+            if(typeof window.webpackJsonp === 'function') {
+                window.webpackJsonp([0], func, ["webpack_inject"]);
+            }
+            else {
+                window.webpackJsonp.push([
+                    ["webpack_inject"],
+                    func,
+                    [["webpack_inject"]]
+                ]);
+            }
+            this.obfuscate = this._getKeys();
+            this.dataAccessor = new DataAccessor(this.scope, this.obfuscate);
+            document.addEventListener("keydown",(e)=>{
+                if(e.code === "KeyX" && e.altKey) {
+                    this.dataAccessor.UiManager().quitGame();
+                }
+            });
+            this.ready = true;
+        } catch (e) {
+            console.log("NON_FATAL", e);
+            return setTimeout(this.init, 200);
+        }
         $(window).on("mousedown", e => {
             if (e.button == 0) return (this.input.leftMouse = true)
             if (e.button == 2) return (this.input.rightMouse = true)
-        })
+        });
         $(window).on("mouseup", e => {
             if (e.button == 0) return (this.input.leftMouse = false)
             if (e.button == 2) return (this.input.rightMouse = false)
-        })
+        });
         $(window).on("mousemove", e => {
             this.input.mouse = {
                 x: e.clientX,
                 y: e.clientY,
-            }
-        })
+            };
+        });
     }
 
     /**
@@ -917,10 +968,10 @@ var Cheat = class {
      * @param {string} theUrl
      */
     get(theUrl) {
-        var xmlHttp = new XMLHttpRequest()
-        xmlHttp.open("GET", theUrl, false) // false for synchronous request
-        xmlHttp.send(null)
-        return xmlHttp.responseText
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("GET", theUrl, false); // false for synchronous request
+        xmlHttp.send(null);
+        return xmlHttp.responseText;
     }
 
     /**
@@ -936,7 +987,7 @@ var Cheat = class {
     uniq(a) {
         a.filter((item, pos) => {
             return a.indexOf(item) == pos
-        })
+        });
     }
 
     /**
@@ -945,24 +996,20 @@ var Cheat = class {
      * @param string {string} The string
      */
     ucfirst(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1)
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 }
 
-window[key] = new Cheat()
-
-window[key].addPlugin(require("./plugins/aimbot"))
-window[key].addPlugin(require("./plugins/esp"))
-window[key].addPlugin(require("./plugins/autoloot"))
-window[key].addPlugin(require("./plugins/trees"))
-window[key].addPlugin(require("./plugins/switch"))
-window[key].addPlugin(require("./plugins/bumpfire"))
-window[key].addPlugin(require("./plugins/spinbot"))
-window[key].addPlugin(require("./plugins/timer"))
+window[key] = new Cheat();
+window[key].addPlugin(require("./plugins/aimbot-2"));
+window[key].addPlugin(require("./plugins/esp"));
+window[key].addPlugin(require("./plugins/autoloot"));
+window[key].addPlugin(require("./plugins/trees"));
+window[key].addPlugin(require("./plugins/switch"));
+window[key].addPlugin(require("./plugins/bumpfire"));
+window[key].addPlugin(require("./plugins/spinbot"));
+window[key].addPlugin(require("./plugins/timer"));
 window[key].addPlugin(require("./plugins/theme"));
-window[key].addPlugin(require("./plugins/ht"))
-window[key].addPlugin(require("./plugins/autoreload"))
-window[key].addPlugin(require("./plugins/autoheal"))
-window[key].addPlugin(require("./plugins/follow"))
-window[key].addPlugin(require("./plugins/pan"))
-//window[key].addPlugin(require("./plugins/botsender"))
+window[key].addPlugin(require("./plugins/autoreload"));
+window[key].addPlugin(require("./plugins/autoheal"));
+window[key].addPlugin(require("./plugins/pan"));

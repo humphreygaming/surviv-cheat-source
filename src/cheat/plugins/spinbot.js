@@ -50,17 +50,19 @@ var Plugin = class {
         return degrees * (pi / 180)
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
-        if (plugins.binds.test("spinbot")) return
-
-        this.angle += parseInt(this.option("angle"))
-
-        var lastPos = {}
-        lastPos.x = Math.cos(this.rad(this.angle)) * 100 + window.innerWidth / 2
-        lastPos.y =
-            Math.sin(this.rad(this.angle)) * 100 + window.innerHeight / 2
-
-        if (!plugins.aimbot.aim) {
+    loop(dataAccessor, player, input, data, plugins) {
+        if(plugins.binds.test("spinbot")) {
+            return;
+        }
+        this.angle += parseInt(this.option("angle"));
+        var lastPos = {};
+        lastPos.x = Math.cos(this.rad(this.angle)) * 100 + window.innerWidth / 2;
+        lastPos.y = Math.sin(this.rad(this.angle)) * 100 + window.innerHeight / 2;
+        var shouldAim = true;
+        if(plugins && plugins.aimbot && plugins.aimbot.aim) {
+            shouldAim = false;
+        }
+        if(shouldAim) {
             input.aim(lastPos)
         }
     }

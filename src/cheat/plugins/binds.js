@@ -8,7 +8,6 @@ var Plugin = class {
             description: "",
         }
         this._options = []
-
         this.addOption("aimbot", "AimBot", "Mouse3")
         this.addOption("spinbot", "SpinBot", "KeyX", "toggle")
         this.addOption("switch", "AutoSwitch", "Mouse3")
@@ -17,13 +16,14 @@ var Plugin = class {
     }
 
     isDown(t) {
-        return this.binds.isDown(this.option(t))
+        return this.binds.isDown(this.option(t));
     }
 
     toggled(t) {
-        if (!this.binds.toggles[this.option(t)]) return false
-
-        return this.binds.toggles[this.option(t)]
+        if(!this.binds.toggles[this.option(t)]) { 
+            return false; 
+        }
+        return this.binds.toggles[this.option(t)];
     }
 
     option(o) {

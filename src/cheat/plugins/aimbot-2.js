@@ -113,43 +113,39 @@ var Plugin = class {
         this._enabled = t
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
+    loop(dataAccessor, player, input, data, plugins) {
         var e = data
             .getEnemies(this.option("object"))
             .sort((a, b) => {
-                if (this.option("mouse")) {
-                    let posA = scope[obfuscate.camera].pointToScreen(a.pos)
-                    let posB = scope[obfuscate.camera].pointToScreen(b.pos)
-
+                var camera = dataAccessor.Camera();
+                if(this.option("mouse")) {
+                    let posA = camera.pointToScreen(a.pos);
+                    let posB = camera.pointToScreen(b.pos);
                     let distA = this.calcDistance(
                         posA.x,
                         posA.y,
                         input.mouse.x,
                         input.mouse.y
-                    )
+                    );
                     let distB = this.calcDistance(
                         posB.x,
                         posB.y,
                         input.mouse.x,
                         input.mouse.y
-                    )
-
-                    return distA - distB
+                    );
+                    return distA - distB;
                 }
-
-                let p = scope[obfuscate.camera].pointToScreen(player.pos)
-
-                let enp1 = scope[obfuscate.camera].pointToScreen(a.pos)
-                let enp2 = scope[obfuscate.camera].pointToScreen(b.pos)
-
+                var playerPos = dataAccessor.GetPlayerPosition(player);
+                let p = dataAccessor.Camera().pointToScreen(playerPos);
+                let enp1 = camera.pointToScreen(a.pos)
+                let enp2 = camera.pointToScreen(b.pos)
                 let ena1 = this.calcDistance(p.x, p.y, enp1.x, enp1.y)
                 let ena2 = this.calcDistance(p.x, p.y, enp2.x, enp2.y)
-
-                return Math.abs(ena1) - Math.abs(ena2)
+                return Math.abs(ena1) - Math.abs(ena2);
             })
             .filter(enemy => {
                 return (
-                    enemy.layer === player.layer &&
+                    dataAccessor.GetPlayerLayer(enemy) === dataAccessor.GetPlayerLayer(player) &&
                     (this.option("col")
                         ? enemy.__type == 2
                             ? true
@@ -157,42 +153,40 @@ var Plugin = class {
                         : true) &&
                     (this.option("fov") > 0
                         ? (() => {
-                              let lp = scope[obfuscate.camera].pointToScreen(
-                                  player.pos
-                              )
-                              let le = scope[obfuscate.camera].pointToScreen(
-                                  enemy.pos
-                              )
-                              let mouseVec = {
-                                  x: input.mouse.x - lp.x,
-                                  y: input.mouse.y - lp.y,
-                              }
-                              let enemyDir = {
-                                  x: le.x - lp.x,
-                                  y: le.y - lp.y,
-                              }
-                              let angleDif = Math.abs(
-                                  Math.atan2(enemyDir.y, enemyDir.x) -
-                                      Math.atan2(mouseVec.y, mouseVec.x)
-                              )
-                              return (
-                                  angleDif <
-                                  this.option("fov") * (Math.PI / 180)
-                              )
+                            var camera = dataAccessor.Camera();
+                            var playerPos = dataAccessor.GetPlayerPosition(player);
+                            var enemyPos = dataAccessor.GetPlayerPosition(enemy);
+                            let lp = camera.pointToScreen(playerPos);
+                            let le = camera.pointToScreen(enemyPos);
+                            let mouseVec = {
+                                x: input.mouse.x - lp.x,
+                                y: input.mouse.y - lp.y,
+                            };
+                            let enemyDir = {
+                                x: le.x - lp.x,
+                                y: le.y - lp.y,
+                            };
+                            let angleDif = Math.abs(
+                                Math.atan2(enemyDir.y, enemyDir.x) -
+                                    Math.atan2(mouseVec.y, mouseVec.x)
+                            );
+                            return (
+                                angleDif <
+                                this.option("fov") * (Math.PI / 180)
+                            );
                           })()
                         : true) &&
                     (this.option("down")
                         ? true
-                        : enemy[obfuscate.netData]
-                        ? !enemy[obfuscate.netData].downed
+                        : dataAccessor.GetPlayerNetData(enemy)
+                        ? !dataAccessor.IsPlayerDowned(enemy)
                         : true)
                 )
-            })
-        data.selectedEnemy = e
-        this.aim = false
-
+            });
+        data.selectedEnemy = e;
+        this.aim = false;
         // Mobile Movement
-        if (this.option("move")) {
+        if(this.option("move")) {
             input.moveAngle =
                 this.calcAngle(
                     {
@@ -203,87 +197,79 @@ var Plugin = class {
                         x: 0,
                         y: 0,
                     }
-                ) + Math.PI
+                ) + Math.PI;
         }
-
-        if (e.length > 0) {
-            if (
-                this.option("type") == "autoaim"
+        if(e.length > 0) {
+            if(this.option("type") == "autoaim"
                     ? !plugins.binds.test("aimbot")
                     : this.option("type") == "on shoot"
                     ? input.leftMouse
                     : this.option("type") == "inverted aim"
                     ? plugins.binds.test("aimbot")
-                    : false
-            ) {
+                    : false) 
+            {
                 this.aim = true
-                var v = data.cantCollide(e[0])
-                var pos = this.posCalc(e[0], player, scope, obfuscate, data)
-
+                var v = data.cantCollide(e[0]);
+                var pos = this.posCalc(e[0], player, dataAccessor, data);
+                if(!pos) {
+                    return;
+                }
                 this.lastAim.x = this.option("legit")
                     ? this.lerp(this.lastAim.x, pos.x, 0.8)
-                    : pos.x
+                    : pos.x;
                 this.lastAim.y = this.option("legit")
                     ? this.lerp(this.lastAim.y, pos.y, 0.8)
-                    : pos.y
-
-                input.aim(this.lastAim)
-
+                    : pos.y;
+                input.aim(this.lastAim);
                 // Auto Attack
                 var eRad = e[0].rad
                     ? e[0].rad
                     : e[0].collider
                     ? e[0].collider.rad || 4
-                    : 4
+                    : 4;
+                var weapType = dataAccessor.GetPlayerWeaponType(player);
                 var wRad =
-                    (data.melee[player[obfuscate.netData].weapType]
-                        ? data.melee[player[obfuscate.netData].weapType].attack
+                    (data.melee[weapType]
+                        ? data.melee[weapType].attack
                               .rad || 1
-                        : 1) * 2
+                        : 1) * 2;
                 data.autoAttack = false
-                if (this.option("attack")) {
+                if(this.option("attack")) {
                     var d = this.calcDistance(
-                        e[0].pos.x,
-                        e[0].pos.y,
-                        player.pos.x,
-                        player.pos.y
-                    )
-                    if (d <= 8) {
-                        data.autoAttack = true
+                        dataAccessor.GetPlayerPosition(e[0]).x,
+                        dataAccessor.GetPlayerPosition(e[0]).y,
+                        dataAccessor.GetPlayerPosition(player).x,
+                        dataAccessor.GetPlayerPosition(player).y
+                    );
+                    if(d <= 8) {
+                        data.autoAttack = true;
                         input.moveAngle =
-                            this.calcAngle(e[0].pos, player.pos) + Math.PI
-                        if (d < eRad + wRad) {
+                            this.calcAngle(dataAccessor.GetPlayerPosition(e[0]), dataAccessor.GetPlayerPosition(player)) + Math.PI;
+                        if(d < eRad + wRad) {
                             input.addInput("EquipMelee")
                             input.addInput("Fire")
                         }
                     }
                 }
-
                 // Auto Shoot
-
-                let localData = player[obfuscate.localData]
-                if (
-                    this.option("shoot") &&
-                    v &&
-                    localData[obfuscate.weapons][localData[obfuscate.weapIdx]]
-                        .ammo > 0
-                )
+                let weapIdx = dataAccessor.GetPlayerWeapIdx(player);
+                let weapons = dataAccessor.GetPlayerWeapons(player);
+                if (this.option("shoot") && v && weapons[weapIdx].ammo > 0) {
                     input.addInput("Fire")
+                }
             }
         }
-        if (e.length < 1 || !this.aim) {
+        if(e.length < 1 || !this.aim) {
             this.lastAim.x = this.option("legit")
                 ? this.lerp(this.lastAim.x, input.mouse.x, 0.2)
-                : input.mouse.x
+                : input.mouse.x;
             this.lastAim.y = this.option("legit")
                 ? this.lerp(this.lastAim.y, input.mouse.y, 0.2)
-                : input.mouse.y
-
-            input.aim(this.lastAim)
+                : input.mouse.y;
+            input.aim(this.lastAim);
         }
-        e = null
-
-        this.date = Date.now()
+        e = null;
+        this.date = Date.now();
     }
 
     /**
@@ -291,87 +277,78 @@ var Plugin = class {
      */
 
     lerp(x, x2, i) {
-        return x * (1.0 - i) + x2 * i
+        return x * (1.0 - i) + x2 * i;
     }
 
     calcAngle(c, e) {
-        let dy = e.y - c.y
-        let dx = e.x - c.x
-        let theta = Math.atan2(dy, dx)
-        return theta
+        let dy = e.y - c.y;
+        let dx = e.x - c.x;
+        let theta = Math.atan2(dy, dx);
+        return theta;
     }
 
     calcDistance(cx, cy, ex, ey) {
-        return Math.sqrt(Math.pow(cx - ex, 2) + Math.pow(cy - ey, 2))
+        return Math.sqrt(Math.pow(cx - ex, 2) + Math.pow(cy - ey, 2));
     }
 
-    findWeap(me, game, obfuscate) {
-        var weap = me[obfuscate.netData].weapType
-        return weap && game.guns[weap] ? game.guns[weap] : false
+    findWeap(me, game, dataAccessor) {
+        var weapType = dataAccessor.GetPlayerWeaponType(me);
+        return weapType && game.guns[weapType] ? game.guns[weapType] : false;
     }
 
     findBullet(curWeapon, game) {
-        return !!curWeapon ? game.bullets[curWeapon.bulletType] : false
+        return !!curWeapon ? game.bullets[curWeapon.bulletType] : false;
     }
 
-    posCalc(enemy, curPlayer, scope, obfuscate, data) {
-        if (!enemy) return
-
-        if (!enemy.posOld || !enemy.posOldOld || !curPlayer.posOldOld)
-            return scope[obfuscate.camera].pointToScreen({
-                x: enemy.pos.x,
-                y: enemy.pos.y,
-            })
-
-        let curWeap = this.findWeap(curPlayer, data, obfuscate)
-        let curBullet = this.findBullet(curWeap, data)
-
-        let FPS = (Date.now() - this.date) * 1.6
-
-        let bulletSpeed = curBullet ? curBullet.speed / FPS : 1000
-
+    posCalc(enemy, curPlayer, dataAccessor, data) {
+        if(!enemy) {
+            return;
+        }
+        if(!enemy.posOld || !enemy.posOldOld || !curPlayer.posOldOld) {
+            return dataAccessor.Camera().pointToScreen({
+                x: dataAccessor.GetPlayerPosition(enemy).x,
+                y: dataAccessor.GetPlayerPosition(enemy).y,
+            });
+        }
+        let curWeap = this.findWeap(curPlayer, data, dataAccessor);
+        let curBullet = this.findBullet(curWeap, data);
+        let FPS = (Date.now() - this.date) * 1.6;
+        let bulletSpeed = curBullet ? curBullet.speed / FPS : 1000;
+        var enemyPos = dataAccessor.GetPlayerPosition(enemy);
+        var playerPos = dataAccessor.GetPlayerPosition(curPlayer);
         var distance = this.calcDistance(
-            enemy.pos.x,
-            enemy.pos.y,
-            curPlayer.pos.x,
-            curPlayer.pos.y
-        )
-
-        var userX = curPlayer.pos.x
-        var userY = curPlayer.pos.y
-
-        var enemyDirX = enemy.pos.x - enemy.posOldOld.x
-        var enemyDirY = enemy.pos.y - enemy.posOldOld.y
-
-        var diffX = enemy.pos.x - userX
-        var diffY = enemy.pos.y - userY
-
+            enemyPos.x,
+            enemyPos.y,
+            playerPos.x,
+            playerPos.y
+        );
+        var userX = playerPos.x;
+        var userY = playerPos.y;
+        var enemyDirX = enemyPos.x - enemy.posOldOld.x;
+        var enemyDirY = enemyPos.y - enemy.posOldOld.y;
+        var diffX = enemyPos.x - userX;
+        var diffY = enemyPos.y - userY;
         var a =
             enemyDirX * enemyDirX +
             enemyDirY * enemyDirY -
-            bulletSpeed * bulletSpeed
-        var b = diffX * enemyDirX + diffY * enemyDirY
-        var c = diffX * diffX + diffY * diffY
-
-        var d = b * b - a * c
-        if (d < 0) {
-            return
+            bulletSpeed * bulletSpeed;
+        var b = diffX * enemyDirX + diffY * enemyDirY;
+        var c = diffX * diffX + diffY * diffY;
+        var d = b * b - a * c;
+        if(d < 0) {
+            return;
         }
-
-        d = Math.sqrt(d)
-        var t = -(b + d) / a
-
+        d = Math.sqrt(d);
+        var t = -(b + d) / a;
         var bulletAngle = Math.atan2(
             diffY + enemyDirY + enemyDirY * t,
             diffX + enemyDirX + enemyDirX * t
-        )
-
+        );
         var pos = {
-            x: curPlayer.pos.x + Math.cos(bulletAngle) * distance,
-            y: curPlayer.pos.y + Math.sin(bulletAngle) * distance,
-        }
-
-        return scope[obfuscate.camera].pointToScreen(pos)
+            x: playerPos.x + Math.cos(bulletAngle) * distance,
+            y: playerPos.y + Math.sin(bulletAngle) * distance,
+        };
+        return dataAccessor.Camera().pointToScreen(pos);
     }
 }
 
