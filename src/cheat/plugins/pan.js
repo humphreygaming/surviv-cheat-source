@@ -116,65 +116,45 @@ var Plugin = class {
         return degrees * (Math.PI / 180)
     }
 
-    playerHasPan(obfuscate, player) {
-        // looking for weapons object
-        ;(function () {
-            if (obfuscate) {
-                if (obfuscate.weapons) return
-                let playerData = player[obfuscate.localData]
-
-                let found = false
-                Object.keys(playerData).forEach(key => {
-                    if (found) return
-
-                    if (Array.isArray(playerData[key])) {
-                        if (playerData[key][0]) {
-                            if (playerData[key][0].hasOwnProperty("type")) {
-                                obfuscate.weapons = key
-                                found = true
-                                return
-                            }
-                        }
-                    }
-                })
-            }
-        })()
-        let a = player[obfuscate.localData][obfuscate.weapons][2].type
-        return a.includes("pan") || a.includes("lasr_s")
+    playerHasPan(dataAccessor, player) {
+        let weapons = dataAccessor.GetPlayerWeapons(player);
+        let meleeType = weapons[2].type;
+        return meleeType.includes("pan") || meleeType.includes("lasr_s")
     }
 
     // Draws a bullet detection radius
     drawRadius(player) {
-        let pixi = this.pixi
-        if (this.pixi == null) {
-            this.pixi = pixi = new window.PIXI.Graphics()
-            player.container.addChild(this.pixi)
-            player.container.setChildIndex(this.pixi, 0)
+        let pixi = this.pixi;
+        if(this.pixi == null) {
+            this.pixi = pixi = new window.PIXI.Graphics();
+            player.container.addChild(this.pixi);
+            player.container.setChildIndex(this.pixi, 0);
         }
-
-        pixi.clear()
-        pixi.beginFill(0xff0000, 0.0)
-        pixi.lineStyle(1, 0x000000, 0.1, 0)
-        pixi.drawCircle(0, 0, this.option("detectRadius") * 16)
+        pixi.clear();
+        pixi.beginFill(0xff0000, 0.0);
+        pixi.lineStyle(1, 0x000000, 0.1, 0);
+        pixi.drawCircle(0, 0, this.option("detectRadius") * 16);
     }
 
     // Loot a pan
-    lootPan(obfuscate, scope, player, input) {
-        let loot = scope[obfuscate.loot.barn][obfuscate.loot.active]
-
+    lootPan(dataAccessor, player, input) {
+        let loot = dataAccessor.GetActiveLoot();
         // No loot available
-        if (loot == null) return
-
+        if(loot == null)  {
+            return;
+        }
         // Skip if player is downed
-        if (player.downed) return
-
+        if(dataAccesor.IsPlayerDowned(player)) {
+            return;
+        }
         // Looting pan
-        if (!this.playerHasPan(obfuscate, player)) {
-            if (loot.type.includes("pan")) {
-                input.addInput("loot")
+        if(!this.playerHasPan(dataAccessor, player)) {
+            if(loot.type.includes("pan")) {
+                input.addInput("loot");
             }
-        } else {
-            console.warn("player has pan")
+        }
+        else {
+            console.warn("player has pan");
         }
     }
 
@@ -198,72 +178,69 @@ var Plugin = class {
     }
 
     // Reflects the bullets
-    reflectBullets(obfuscate, scope, player, input) {
+    reflectBullets(dataAccessor, player, input) {
         // Dont reflect if player is shooting
-        if (input.leftMouse) return
-
-        // Return if player has no pan
-        if (
-            !this.option("turnWithoutPan") &&
-            !this.playerHasPan(obfuscate, player)
-        )
-            return
-
-        // Remain to be turned for a moment
-        if (
-            this.lastTurnPos != null &&
-            Date.now() - this.lastTurnTime < this.stayTurnedFor
-        ) {
-            this.turnTo(player.pos, this.lastTurnPos, input)
+        if(input.leftMouse) {
+            return;
         }
-
-        let bullets = scope[obfuscate["bullets"]]["bullets"]
+        // Return if player has no pan
+        if(!this.option("turnWithoutPan") && !this.playerHasPan(dataAccessor, player)) {
+            return;
+        }
+        // Remain to be turned for a moment
+        if(this.lastTurnPos != null && Date.now() - this.lastTurnTime < this.stayTurnedFor) {
+            this.turnTo(dataAccessor.GetPlayerPosition(player), this.lastTurnPos, input);
+        }
+        var playerPos = dataAccessor.GetPlayerPosition(player);
+        let bullets = dataAccessor.Bullets()["bullets"]
             .filter(bullet => {
-                let playerRadius = 1
+                let playerRadius = 1;
                 let alpha = Math.acos(
                     this.dotProduct(
                         bullet.dir,
-                        this.normalize(this.subtract(player.pos, bullet.pos))
+                        this.normalize(this.subtract(playerPos, bullet.pos))
                     )
-                )
+                );
                 let beta = Math.asin(
                     playerRadius /
-                        this.magnitude(this.subtract(player.pos, bullet.pos))
-                )
-
+                        this.magnitude(this.subtract(playerPos, bullet.pos))
+                );
                 return (
                     bullet.alive &&
-                    bullet.layer === player.layer &&
+                    bullet.layer === dataAccessor.GetPlayerLayer(player) &&
                     bullet.playerId != player.__id &&
                     // if the bullet within the "reaction" radius
-                    this.getDistance(player.pos, bullet.pos) <=
+                    this.getDistance(playerPos, bullet.pos) <=
                         this.option("detectRadius") &&
                     // If bullet is aiming at player
                     alpha <= beta
-                )
+                );
             })
             .sort((a, b) => {
                 // Sort by distance to the player
-                let distA = this.getDistance(player.pos, a.pos),
-                    distB = this.getDistance(player.pos, b.pos)
+                let distA = this.getDistance(playerPos, a.pos),
+                    distB = this.getDistance(playerPos, b.pos)
                 return distA - distB
-            })
-
-        if (bullets.length == 0) return
-
-        this.turnTo(player.pos, bullets[0].pos, input)
-        this.lastTurnTime = Date.now()
-        this.lastTurnPos = bullets[0].pos
+            });
+        if(bullets.length == 0) {
+            return;
+        }
+        this.turnTo(playerPos, bullets[0].pos, input);
+        this.lastTurnTime = Date.now();
+        this.lastTurnPos = bullets[0].pos;
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
-        if (this.option("displayRadius")) this.drawRadius(player)
-        else if (this.pixi != null) this.pixi.clear()
-
-        if (this.option("lootPan"))
-            this.lootPan(obfuscate, scope, player, input)
-
-        this.reflectBullets(obfuscate, scope, player, input)
+    loop(dataAccessor, player, input, data, plugins) {
+        if(this.option("displayRadius")) { 
+            this.drawRadius(player);
+        }
+        else if(this.pixi != null) {
+            this.pixi.clear();
+        }
+        if(this.option("lootPan")) {
+            this.lootPan(dataAccessor, player, input);
+        }
+        this.reflectBullets(dataAccessor, player, input);
     }
 }
 

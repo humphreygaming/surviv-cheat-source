@@ -52,7 +52,7 @@ var Plugin = class {
         this._enabled = t
     }
 
-    names(player, me, obfuscate) {
+    names(player) {
         if (!player) return
         if (
             !player.nameText._text ||
@@ -66,78 +66,82 @@ var Plugin = class {
         player.nameText.visible = true
     }
 
-    draw(enemies, activePlayer, sjs, data) {
-        if (!enemies) return
-        if (!activePlayer) return
-
+    draw(enemies, activePlayer, data, dataAccessor) {
+        if(!enemies || !activePlayer)  {
+            return;
+        }
         let points = enemies.map(enemy => {
             return {
-                x: (enemy.pos.x - activePlayer.pos.x) * 16,
-                y: (activePlayer.pos.y - enemy.pos.y) * 16,
+                x: (dataAccessor.GetPlayerPosition(enemy).x - dataAccessor.GetPlayerPosition(activePlayer).x) * 16,
+                y: (dataAccessor.GetPlayerPosition(activePlayer).y - dataAccessor.GetPlayerPosition(enemy).y) * 16,
                 img: enemy.img || false,
                 type: enemy.__type,
                 id: enemy.__id,
-                layer: enemy.layer,
+                layer: dataAccessor.GetPlayerLayer(enemy),
             }
-        })
-
+        });
         let pixi = this.values.pixi
-
-        if (!pixi) {
-            pixi = new window.PIXI.Graphics()
-            this.values.pixi = pixi
-            activePlayer.container.addChild(pixi)
-            activePlayer.container.setChildIndex(pixi, 0)
+        if(!pixi) {
+            pixi = new window.PIXI.Graphics();
+            this.values.pixi = pixi;
+            activePlayer.container.addChild(pixi);
+            activePlayer.container.setChildIndex(pixi, 0);
         }
-
-        if (!pixi.graphicsData) return
-
-        pixi.clear()
-
+        if(!pixi.graphicsData) {
+            return;
+        }
+        pixi.clear();
         points.forEach(point => {
-            if (point.type == 2 && point.layer !== activePlayer.layer) return
-
-            pixi.lineStyle(this.option("width"), 0xff0000, 0.5)
-            if (point.layer !== activePlayer.layer) pixi.lineStyle(this.option("width"), 0xffffff, 0.5)
-            if (point.type == 2) pixi.lineStyle(this.option("width"), 0xffff00, 0.5)
-            pixi.moveTo(0, 0)
-            pixi.lineTo(point.x, point.y)
-        })
-
-        if (data.aimPred) {
-            pixi.lineStyle(2, 0xffffff, 0.5)
-
-            pixi.moveTo(0, 0)
+            if(point.type == 2 && point.layer !== dataAccessor.GetPlayerLayer(activePlayer)) {
+                return;
+            }
+            pixi.lineStyle(this.option("width"), 0xff0000, 0.5);
+            if(point.layer !== dataAccessor.GetPlayerLayer(activePlayer)) {
+                pixi.lineStyle(this.option("width"), 0xffffff, 0.5);
+            }
+            if(point.type == 2) {
+                pixi.lineStyle(this.option("width"), 0xffff00, 0.5);
+            }
+            pixi.moveTo(0, 0);
+            pixi.lineTo(point.x, point.y);
+        });
+        if(data.aimPred) {
+            pixi.lineStyle(2, 0xffffff, 0.5);
+            pixi.moveTo(0, 0);
             pixi.lineTo(
-                (data.aimPred.x - activePlayer.pos.x) * 16,
-                (activePlayer.pos.y - data.aimPred.y) * 16
+                (data.aimPred.x - dataAccessor.GetPlayerPosition(activePlayer).x) * 16,
+                (dataAccessor.GetPlayerPosition(activePlayer).y - data.aimPred.y) * 16
             )
         }
-
         enemies.forEach(n => {
-            if (n.__type == 1) this.names(n, activePlayer, sjs)
-        })
-
-        pixi.lineStyle(0)
-        if (this.option("nade")) {
+            if(n.__type == 1) { 
+                this.names(n); 
+            }
+        });
+        pixi.lineStyle(0);
+        if(this.option("nade")) {
             data.getObjects()
                 .filter(obj => {
-                    if (
-                        obj.__type === data.data.Type.Projectile ||
+                    if(obj.__type === data.data.Type.Projectile ||
                         (obj.img &&
                             obj.img.match(/barrel-/g) &&
                             obj.smokeEmitter &&
-                            data.items[obj.type].explosion)
-                    ) {
-                        return true
+                            data.items[obj.type].explosion)) 
+                    {
+                        return true;
                     }
-                    return false
+                    return false;
                 })
                 .forEach(obj => {
-                    pixi.beginFill(0xff0000, 0.3)
+                    //If the object is inside a bunker and you're not etc, make the blast radius white
+                    if(obj.layer !== dataAccessor.GetPlayerLayer(activePlayer)) {
+                        pixi.beginFill(0xffffff, 0.3);
+                    } else {
+                        pixi.beginFill(0xff0000, 0.2) ;
+                    }
                     pixi.drawCircle(
-                        (obj.pos.x - activePlayer.pos.x) * 16,
-                        (activePlayer.pos.y - obj.pos.y) * 16,
+                        (obj.pos.x - dataAccessor.GetPlayerPosition(activePlayer).x) * 16,
+                        (dataAccessor.GetPlayerPosition(activePlayer).y - obj.pos.y) * 16,
                         (data.explosions[
                             data.items[obj.type].explosionType ||
                             data.items[obj.type].explosion
@@ -145,24 +149,23 @@ var Plugin = class {
                             1) *
                         16
                     )
-                })
+                });
         }
-
-        points = null
+        points = null;
     }
 
     end() {
-        this.values.pixi = null
-        this.laser = null
+        this.values.pixi = null;
+        this.laser = null;
     }
 
-    findWeap(me, game, obfuscate) {
-        var weap = me[obfuscate.netData].weapType
-        return weap && game.guns[weap] ? game.guns[weap] : false
+    findWeap(player, game, dataAccessor) {
+        var weap = dataAccessor.GetPlayerWeaponType(player);
+        return weap && game.guns[weap] ? game.guns[weap] : false;
     }
 
     findBullet(curWeapon, game) {
-        return !!curWeapon ? game.bullets[curWeapon.bulletType] : false
+        return !!curWeapon ? game.bullets[curWeapon.bulletType] : false;
     }
 
     laserPointer(
@@ -172,99 +175,100 @@ var Plugin = class {
         acPlayer,
         color,
         opac,
-        obfuscate
+        dataAccessor
     ) {
-        if (!curPlayer || !curPlayer.container) return
+        if(!curPlayer || !curPlayer.container) {
+            return;
+        }
 
-        this.laser = this.laser || {}
+        this.laser = this.laser || {};
 
-        var laser = this.laser
-        var lasic = {}
+        var laser = this.laser;
+        var lasic = {};
 
         let isMoving =
             curPlayer.posOldOld &&
-            (curPlayer.pos.x != curPlayer.posOldOld.x ||
-                curPlayer.pos.y != curPlayer.posOldOld.y)
+            (dataAccessor.GetPlayerPosition(curPlayer).x != curPlayer.posOldOld.x ||
+            dataAccessor.GetPlayerPosition(curPlayer).y != curPlayer.posOldOld.y);
 
-        if (curBullet) {
-            lasic.active = true
-            lasic.range = curBullet.distance * 16.25
+        if(curBullet) {
+            lasic.active = true;
+            lasic.range = curBullet.distance * 16.25;
             lasic.direction =
                 Math.atan2(
-                    curPlayer[obfuscate.netData].dir.x,
-                    curPlayer[obfuscate.netData].dir.y
+                    dataAccessor.GetPlayerDirection(curPlayer).x,
+                    dataAccessor.GetPlayerDirection(curPlayer).y
                 ) -
-                Math.PI / 2
+                Math.PI / 2;
             lasic.angle =
                 ((curWeapon.shotSpread +
                     (isMoving ? curWeapon.moveSpread : 0)) *
                     0.01745329252) /
-                2
+                2;
         } else {
-            lasic.active = false
+            lasic.active = false;
         }
-
-        var draw = laser.draw
-
-        if (!draw) {
-            draw = new window.PIXI.Graphics()
-
-            laser.draw = draw
-            curPlayer.container.addChildAt(draw, 0)
+        var draw = laser.draw;
+        if(!draw) {
+            draw = new window.PIXI.Graphics();
+            laser.draw = draw;
+            curPlayer.container.addChildAt(draw, 0);
         }
-
-        if (!draw.graphicsData) return
-
-        if (!lasic.active) return
-
+        if(!draw.graphicsData) {
+            return;
+        }
+        if(!lasic.active) {
+            return;
+        }
+        var curPlayerPos = dataAccessor.GetPlayerPosition(curPlayer);
+        var acPlayerPos = dataAccessor.GetPlayerPosition(acPlayer);
         var center = {
-            x: (curPlayer.pos.x - acPlayer.pos.x) * 16,
-            y: (acPlayer.pos.y - curPlayer.pos.y) * 16,
-        }
-        var radius = lasic.range
-        var angleFrom = lasic.direction - lasic.angle
-        var angleTo = lasic.direction + lasic.angle
-
+            x: (curPlayerPos.x - acPlayerPos.x) * 16,
+            y: (acPlayerPos.y - curPlayerPos.y) * 16,
+        };
+        var radius = lasic.range;
+        var angleFrom = lasic.direction - lasic.angle;
+        var angleTo = lasic.direction + lasic.angle;
         angleFrom =
             angleFrom > Math.PI * 2
                 ? angleFrom - Math.PI * 2
                 : angleFrom < 0
                 ? angleFrom + Math.PI * 2
-                : angleFrom
+                : angleFrom;
         angleTo =
             angleTo > Math.PI * 2
                 ? angleTo - Math.PI * 2
                 : angleTo < 0
                 ? angleTo + Math.PI * 2
-                : angleTo
-
-        draw.beginFill(color || 0x0000ff, opac || 0.3)
-        draw.moveTo(center.x, center.y)
-        draw.arc(center.x, center.y, radius, angleFrom, angleTo)
-        draw.lineTo(center.x, center.y)
-        draw.endFill()
+                : angleTo;
+        draw.beginFill(color || 0x0000ff, opac || 0.3);
+        draw.moveTo(center.x, center.y);
+        draw.arc(center.x, center.y, radius, angleFrom, angleTo);
+        draw.lineTo(center.x, center.y);
+        draw.endFill();
     }
 
-    loop(obfuscate, scope, player, input, data, plugins) {
+    loop(dataAccessor, player, input, data, plugins) {
         var enemies = data
             .getEnemies(
                 plugins["aimbot"] ? plugins["aimbot"].option("object") : false
             )
             .filter(p =>
-                p && p[obfuscate.netData]
+                p && dataAccessor.GetPlayerNetData(p)
                     ? plugins["aimbot"] && plugins["aimbot"].option("down")
                     ? true
-                    : !p[obfuscate.netData].downed
+                    : !dataAccessor.IsPlayerDowned(p)
                     : true
-            )
-        this.draw(enemies, player, obfuscate, data)
-
-        var curWeapon = this.findWeap(player, data, obfuscate)
-        var curBullet = this.findBullet(curWeapon, data)
-
-        if (this.laser && this.laser.draw) this.laser.draw.clear()
-        if (!this.option("laser")) return
-
+            );
+        this.draw(enemies, player, data, dataAccessor);
+        var curWeapon = this.findWeap(player, data, dataAccessor);
+        var curBullet = this.findBullet(curWeapon, data);
+        if(this.laser && this.laser.draw) {
+            this.laser.draw.clear();
+        }
+        if(!this.option("laser")) {
+            return;
+        }
         this.laserPointer(
             curBullet,
             curWeapon,
@@ -272,14 +276,12 @@ var Plugin = class {
             player,
             undefined,
             undefined,
-            obfuscate
-        )
-
+            dataAccessor
+        );
         enemies
             .filter(n => n.__type == 1)
             .forEach(enemy => {
-                var eW = this.findWeap(enemy, data, obfuscate)
-
+                var eW = this.findWeap(enemy, data, dataAccessor)
                 this.laserPointer(
                     this.findBullet(eW, data),
                     eW,
@@ -287,11 +289,10 @@ var Plugin = class {
                     player,
                     "0",
                     0.2,
-                    obfuscate
+                    dataAccessor
                 )
-            })
-
-        enemies = null
+            });
+        enemies = null;
     }
 }
 
