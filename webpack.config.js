@@ -17,7 +17,7 @@ try {
     fs.writeFileSync("./src/cheat/data.json", "{}")
     manifest = {}
 }
-var version = (manifest.version = "2.1.4.1")
+var version = (manifest.version = "2.1.6")
 
 var time = new Date()
 
