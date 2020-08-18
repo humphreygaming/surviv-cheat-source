@@ -34,50 +34,32 @@ import("crypto-js").then(CryptoJS => {
         }
 
         //Returns a patched version of the given JS with injected code/fixes.
-        const PatchAppJs = (js, dictReplacements, isDev, isVerbose) => {
+        const PatchAppJs = (js, isDev, isVerbose) => {
             var key = require("./cheat/random")();
             var images = {
                 smoke: getEnciFile("file/wm02.enci"),
             };
             var tex = JSON.parse(get("file/textures/db.json"));
-            //The obfuscation sometimes leaves certain strings in the code and sometimes replaces them with a function call found in dictReplacements.
-            //We must always replace these function calls to the string values so our regex below always work.
-            var replaceVariable = variable => {
-                if(!dictReplacements[variable]) {
-                    return;
-                }
-                js = js.replace(new RegExp(dictReplacements[variable], "g"), "'" + variable + "'");
-            };
-            replaceVariable('log');
-            replaceVariable('logError');
-            replaceVariable('canvasMode');
-            replaceVariable('ws');
-            replaceVariable('getElementsByTagName');
-            replaceVariable('part-smoke-01.img');
-            replaceVariable('part-smoke-02.img');
-            replaceVariable('part-smoke-03.img');
-            replaceVariable('pass-text-pulse');
-            console.log("Before replaces", js);
             var data = [
                 {
                     name: "Console Fix",
-                    from: /&&\(console\['log'\]=function\(\){}\)/g,
+                    from: /&&\(console\[[^\]]+\]=function\(\){}\)/g,
                     to: "",
                     dev: true,
                 },
                 {
                     name: "OnError Patch",
-                    from: new RegExp("window\\['logError'\\]=function", "g"),
-                    to: "window['onrandomvariable']=function",
+                    from: /window\[[^\]]+\](=function\([a-z0-9_]+,[a-z0-9_]+,[a-z0-9_]+,[a-z0-9_]+,[a-z0-9_]+\))/g,
+                    to: "window['onrandomvariable']$1",
                 },
                 {
                     name: "Scope Export",
-                    from: /,this\['canvasMode'\]=(_[a-z0-9]+)/g,
-                    to: `;window.${key}.scope=this.game; this['canvasMode']=$1`,
+                    from: /function ([a-z0-9_]+)\(([a-z0-9_]+),([a-z0-9_]+)\)\{this\[([^\]]+)\]=([a-z0-9_]+),this\[([^\]]+)\]=([a-z0-9_]+),this\[([^\]]+)\]=([^_^,]+)/g,
+                    to: "function $1($2,$3){this[$4]=$5;window." + key + ".scope=this.game; this[$6]=$7,this[$8]=$9",
                 },
                 {
                     name: "Green Screen of Death Fix",
-                    from: /if\([a-z0-9_]+&&[a-z0-9_]+\[[A-Za-z0-9'\s]+\]&&[a-z0-9_]+\['ws'\]\)\{var [a-z0-9_]+=[a-z0-9_]+;[a-z0-9_]+=null,[a-z0-9_]+\['ws'\]\[[^\]]+\]\(\);\}/g,
+                    from: /if\([a-z0-9_]+&&[a-z0-9_]+\[[^\]]+\]&&[a-z0-9_]+\[[^\]]+\]\)\{var [a-z0-9_]+=[a-z0-9_]+;[a-z0-9_]+=null,[a-z0-9_]+\[[^\]]+\]\[[^\]]+\]\(\);\}/g,
                     to: "",
                 },
                 {
@@ -107,7 +89,7 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "End Game",
-                    from: /([a-z_0-9]+\['game'\]\['onQuit'\]\(\))/g,
+                    from: /([a-z0-9_]+\[[^\]]+\]\['onQuit'\]\(\));/g,
                     to: `$1;window.${key}.end();`,
                 },
                 {
@@ -115,16 +97,6 @@ import("crypto-js").then(CryptoJS => {
                     from: /&&[a-z0-9_]+\[[^\]]+\]\[[^\]]+\]<[a-z0-9_]+;/g,
                     to: "&& false;",
                 },
-                // {
-                //     name: "Smoke 1",
-                //     from: /,'(part-smoke-0[0-9]\.img|pass-text-pulse)'\]/g,
-                //     to: ",'" + images.smoke + "']",
-                // },
-                // {
-                //     name: "Smoke 2",
-                //     from: /\['(part-smoke-0[0-9]\.img|pass-text-pulse)'/g,
-                //     to: "['" + images.smoke + "'",
-                // },
                 {
                     name: "Smoke Easy",
                     from: /'(airdropSmoke|bathhouseSteam|cabinSmoke)':\{'image':\[[^,]+,[^\]]+\],/g,
@@ -137,8 +109,8 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "Prevent Hidden",
-                    from: /this\['playerMapSprites'\]\[[a-z0-9_]+\]\[[^\]]+\]=!\[\];/g,
-                    to: "continue;"
+                    from: /this\[[^\]]+\]\[[a-z0-9_]+\]\[[^\]]+\]=!\[\];\}\}/g,
+                    to: "continue;}}"
                 },
                 {
                     name: "Non-Dev Patch",
@@ -176,10 +148,11 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "Loop",
-                    from: /;var ([a-z0-9_]+)=this\['m_activePlayer'\]\['m_getZoom'\]\(\),/g,
+                    from: /;var ([a-z0-9_]+)=this\[([^\]]+)\]\[([^\]]+)\]\(\),([a-z0-9_]+)=([a-z0-9_]+)/g,
                     to:
-                        ";var $1 = this['m_activePlayer']['m_getZoom']();" +
-                        `try{if(!window.${key}.ready){window.${key}.init();};window.${key}.loop()}catch(e){console.log(e)};var `,
+                        ";var $1 = this[$2][$3]();" +
+                        `try{if(!window.${key}.ready){window.${key}.init();};window.${key}.loop()}catch(e){console.log(e)};` +
+                        "var $4=$5",
                 },
                 // {
                 //     name: "Icon Fix",
@@ -262,13 +235,26 @@ import("crypto-js").then(CryptoJS => {
         //Returns a dictionary of string values to their replacement in the obfuscated appJs. i.e. "Bitstream" -> "a0_0234234('0x342')"
         const GetObfReplacements = (appJs, isVerbose, shouldDeobfuscate) => {
             try {
-                var match = /var [A-Za-z0-9_]+=(\[.*\]);\(function\(/g.exec(appJs);
+                var match = /var ([A-Za-z0-9_]+)=(\[.*\]);\(function\(/g.exec(appJs);
                 if(isVerbose) {
                     console.log("Match for Obf replacements", match);
                 }
-                var array = new Function("var a = "+match[1]+"; return a;")();
+                var arrayName = match[1];
+                var array = new Function("var a = "+match[2]+"; return a;")();
                 if(isVerbose) {
+                    console.log("Variable name", arrayName);
                     console.log("Array for Obf replacements", array);
+                }
+                var regExp = new RegExp("var [a-z0-9_]+="+arrayName+"\\[([a-z0-9_]+)\\];", "g");
+                match = regExp.exec(appJs);
+                if(isVerbose) {
+                    console.log("Second match", match);
+                }
+                regExp = new RegExp("var ([a-z0-9_]+)=function\\("+match[1]+",", "g");
+                match = regExp.exec(appJs);
+                var masterFunctionName = match[1];
+                if(isVerbose) {
+                    console.log("Master function name", masterFunctionName);
                 }
                 if(shouldDeobfuscate) {
                     for(var i = 0; i < array.length; i++) {
@@ -276,14 +262,14 @@ import("crypto-js").then(CryptoJS => {
                             continue;
                         }
                         var hexStr = "0x"+i.toString(16);
-                        var findRegex = new RegExp("a0_0x3cd7\\(\'"+hexStr+"\'\\)", "g");
+                        var findRegex = new RegExp(masterFunctionName+"\\(\'"+hexStr+"\'\\)", "g");
                         appJs = appJs.replace(findRegex, "\'"+array[i]+"\'");
                     }
                     console.log("Deobfuscated JS", appJs);
                 }
                 var retVal = { };
                 for(var i = 0; i < array.length; i++) {
-                    retVal[array[i]] = `a0_0x3cd7\\('0x${i.toString(16)}'\\)`;
+                    retVal[array[i]] = masterFunctionName+`\\('0x${i.toString(16)}'\\)`;
                 }
                 if(isVerbose) {
                     console.log("Obf replacements", retVal);
@@ -307,8 +293,9 @@ import("crypto-js").then(CryptoJS => {
                         var shouldDeobfuscate = r.url.match(/deobf/g);
                         var isVerbose = r.url.match(/verbose/g);
                         var appJs = request("GET", req.url).getBody("utf-8");
+                        //Not used currently, but helpful to have.
                         var dictReplacements = GetObfReplacements(appJs, isVerbose, shouldDeobfuscate);
-                        appJs = PatchAppJs(appJs, dictReplacements, isDev, isVerbose);
+                        appJs = PatchAppJs(appJs, isDev, isVerbose);
                         InjectInBody(req.tabId, appJs);
                     })
                     return {
