@@ -467,11 +467,29 @@ var DataAccessor = class {
     }
 
     GetPlayerPosition(player) {
-        return player[this._obfuscationKeys.netData][this._obfuscationKeys.pos];
+        if(!player || !player.__type) {
+            console.error("Player has no type", player);
+        }
+        //Is the current player or an actual enemy.
+        if(player.__type === 1) {
+            return player[this._obfuscationKeys.netData][this._obfuscationKeys.pos];
+        }
+        else {
+            return player.pos;
+        }
     }
 
     GetPlayerLayer(player) {
-        return player[this._obfuscationKeys.netData][this._obfuscationKeys.layer];
+        if(!player || !player.__type) {
+            console.error("Player has no type", player);
+        }
+        //Is the current player or an actual enemy.
+        if(player.__type === 1) {
+            return player[this._obfuscationKeys.netData][this._obfuscationKeys.layer];
+        }
+        else {
+            return player.layer;
+        }
     }
 
     GetPlayerWeapIdx(player) {
