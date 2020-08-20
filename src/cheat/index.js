@@ -2,6 +2,7 @@ window.$ = require("jquery")
 $("#news-block").html("<iframe src='https://chat-oven.glitch.me/'></iframe>")
 
 var swal = require("sweetalert")
+var https = require("https");
 var versioning = require("versioning")
 if (typeof Object.assign !== "function") {
     // Must be writable: true, enumerable: false, configurable: true
@@ -759,7 +760,7 @@ var Cheat = class {
             },
         }
         this.UI = new UI(this.version, this.plugins);
-        this.checkUpdate();
+        this.CheckForUpdates();
     }
 
     /**
@@ -982,21 +983,47 @@ var Cheat = class {
     }
 
     /**
-     * Perform HTTP GET requests.
-     * @param {string} theUrl
+     * Check for updates on the GitHub release repo
      */
-    get(theUrl) {
-        var xmlHttp = new XMLHttpRequest();
-        xmlHttp.open("GET", theUrl, false); // false for synchronous request
-        xmlHttp.send(null);
-        return xmlHttp.responseText;
-    }
-
-    /**
-     * Check for updates
-     */
-    checkUpdate() {
-       
+    CheckForUpdates() {
+        https.get("https://api.github.com/repos/IceHacks/SurvivCheatInjector/releases/latest", (resp) => {
+            var data = "";
+            resp.on("data", chunk => {
+                data += chunk;
+            });
+            resp.on("end", () => {
+                var retVal = JSON.parse(data);
+                if(!retVal || !retVal.tag_name || !retVal.html_url) {
+                    console.error("Invalid response when checking for update: ", retVal);
+                    return;
+                }
+                if(!this.version) {
+                    console.error("Invalid version.");
+                    return;
+                }
+                //Check to see if the latest release's version is the same or different from the currently installed version.
+                if(retVal.tag_name == this.version) {
+                    //Up to date.
+                    return;
+                }
+                swal(
+                    "Surviv Cheat Injector Update",
+                    "There is a new update available.\n\nCurrent Version: " + this.version + "\nNew Version: " + retVal.tag_name,
+                    {
+                        buttons: {
+                            close: true,
+                            download: true,
+                        },
+                    }
+                ).then(e => {
+                    if(e == "download") {
+                        window.open(retVal.html_url, "_blank")
+                    }
+                });
+            });
+        }).on("error", (err => {
+            console.error("Error checking for update:", err);
+        }));
     }
 
     /**
