@@ -89,8 +89,8 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "End Game",
-                    from: /([a-z0-9_]+\[[^\]]+\]\['onQuit'\]\(\));/g,
-                    to: `$1;window.${key}.end();`,
+                    from: /([a-z0-9_]+\[[^\]]+\]\[[^\]]+\]\(\));\};/g,
+                    to: `$1;window.${key}.end();};`,
                 },
                 {
                     name: "Transparency",
