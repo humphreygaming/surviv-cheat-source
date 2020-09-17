@@ -148,11 +148,11 @@ import("crypto-js").then(CryptoJS => {
                 },
                 {
                     name: "Loop",
-                    from: /;var ([a-z0-9_]+)=this\[([^\]]+)\]\[([^\]]+)\]\(\),([a-z0-9_]+)=([a-z0-9_]+)/g,
+                    from: /;var ([a-z0-9_]+)=this\[([^\]]+)\]\[([^\]]+)\]\(\),([a-z0-9_]+)=([a-z0-9_]+)\[/g,
                     to:
                         ";var $1 = this[$2][$3]();" +
                         `try{if(!window.${key}.ready){window.${key}.init();};window.${key}.loop()}catch(e){console.log(e)};` +
-                        "var $4=$5",
+                        "var $4=$5[",
                 },
                 // {
                 //     name: "Icon Fix",
