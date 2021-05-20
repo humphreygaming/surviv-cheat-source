@@ -14,7 +14,7 @@ In the containing folder you will find a couple of files and folders. The breakd
 - Package Lock
 - Webpack Configuration
 
-A basic run down of what the FILES do
+A basic run down of what the FILES do:
 
 - Github files are nothing
 - app.js is surviv.io's source code. It is mainly included as a refference and will need to be updated accordingly
