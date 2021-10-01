@@ -1,28 +1,32 @@
-# Welcome
-This is the source code for IceHacks Surviv.io Cheat Injector. Don't ask how to use or what everything says because if you don't know JS then you really shouldn't be here. Pull Requests are welcome, as the updates are checked and verified and eventually will go on to the main cheat itself.
+# IceHacksGP Surviv.io Cheat Injector Source Code
+This is the main hosting place for the source code that makes IceHacks Surviv.io Cheat Injector do stuff. Pull Requests are openly welcomed; these will be checked, compiled, and verified and may eventualy end up in the main cheat itself.
 
-# Readme
-In the containing folder you will find a couple of files and folders. The breakdown is very simple. You have a
+# Usage
+### Folder Structure
+A couple of *files* and *folders*
 
 - Output Folder
 - Source Folder
-- Github stuff
-- Surviv.io's App.js (maybe)
+- Couple of Github stuff
+- Surviv.io's App.js, if available
 - Compiler
 - Installer
 - Package
 - Package Lock
 - Webpack Configuration
 
-A basic run down of what the FILES do:
+### File Usage
+A basic run down on what the *files* do
 
-- Github files are nothing
-- app.js is surviv.io's source code. It is mainly included as reference and will need to be updated accordingly.
-- Compiler.bat is just an easy way to compile the source code once you finish editing/adding stuff. Think of it as an "export" button that outputs the files towards the output folder. More on that later.
-- Installer.bat is also an easy way to install node.js. It is only to be used once or whenever you need to update something, unless for whatever reason you feel like spamming it.
-- Package.json and Package-lock.json are both part of the compiler (npx webpack). This works alonside:
-Webpack.config.json, a configuration file. Here you can change SCI's version from 2.1.4 to 2.1.5 and so on.
-- A basic run down on what FOLDERS do
+- "app.js" is surviv.io's source code when available. This is mostly included just as reference and will need to be updated accordingly.
+- "compiler.bat" is an export-like batch file, runs "*npx webpack*", and outputs a packaged and obfuscated cheat.
+- "installer.bat" is a batch file that installs node.js, runs "*npm i*". Must be installed when source code is first adquired, will install in a folder in this directory. 
+- "package.json" sets dependencies and info
+- "package-lock.json" builds a dependency structure
+- "webpack.config.json" runs obfuscation, generates a secret key, automatically sets the manifest version to X.X.X
+
+### Folder Usage
+A basic run down on what the *folders* do
 
 Output is where the extension itself is exported to. You can use this folder as sort of a test bin of sorts. The layout of this folder should already look familiar. Its all the source code obfuscated and packed.
 
