@@ -234,13 +234,15 @@ var Plugin = class {
                               .rad || 1
                         : 1) * 2;
                 data.autoAttack = false
-                if(this.option("attack")) {
-                    var d = this.calcDistance(
+                // flancast90: make var d global for accessing player pos outside of loop
+
+                var d = this.calcDistance(
                         dataAccessor.GetPlayerPosition(e[0]).x,
                         dataAccessor.GetPlayerPosition(e[0]).y,
                         dataAccessor.GetPlayerPosition(player).x,
                         dataAccessor.GetPlayerPosition(player).y
                     );
+                if(this.option("attack")) {
                     if(d <= 8) {
                         data.autoAttack = true;
                         input.moveAngle =
@@ -254,8 +256,40 @@ var Plugin = class {
                 // Auto Shoot
                 let weapIdx = dataAccessor.GetPlayerWeapIdx(player);
                 let weapons = dataAccessor.GetPlayerWeapons(player);
-                if (this.option("shoot") && v && weapons[weapIdx].ammo > 0) {
-                    input.addInput("Fire")
+
+                // flancast90: fix melee bug which wouldn't allow hit
+                if (this.option("shoot") && v && (d > 8)) {
+                    var weap_otherIdx;
+                    var other_weapType;
+                    var other_weapExists = false;
+
+                    // get index of other weapon for auto-switch
+                    if (weapIdx == 0) {
+                        weap_otherIdx = 1;
+                        other_weapType = "Secondary";
+                    }else{
+                        weap_otherIdx = 0;
+                        other_weapType = "Primary";
+                    }
+                    
+                    if (weapons[weap_otherIdx].type.length > 0) {
+                        other_weapExists = true;
+                    }
+
+                    // check if player ammo clip is empty
+                    if (weapons[weapIdx].ammo > 0) {
+                        input.addInput("Fire")
+                    } else {
+                        // if so, and the player has another gun, switch to that gun to prevent reload in the middle of battle
+                        if ((other_weapExists == true) && (weapons[weap_otherIdx].ammo > 0)) {
+                            input.addInput("Equip"+other_weapType);
+                            input.addInput("Fire");
+                        }else {
+                           // break;
+                        }
+                    }
+            
+
                 }
             }
         }
