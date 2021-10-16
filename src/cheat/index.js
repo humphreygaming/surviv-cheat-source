@@ -191,7 +191,24 @@ var UI = class {
                 })
             }
 
-           
+			
+			 if (e.key == "Tab") {
+                swal(
+                    "You pressed 'Tab'",
+                    "Are you sure you want to clear your settings?",
+                    {
+                        buttons: {
+                            cancel: true,
+                            ok: true,
+                        },
+                    }
+                ).then(e => {
+                    if (e == "ok") {
+                        localStorage.removeItem("settings")
+                        location.reload()
+                    }
+                })
+            }
         })
         $("body").append(this.settings)
 
@@ -1006,7 +1023,8 @@ var Cheat = class {
                     //Up to date.
                     return;
                 }
-                swal(
+                if (!localStorage.checkoff) {
+				swal(
                     "Surviv Cheat Injector Update",
                     "There is a new update available.\n\nCurrent Version: " + this.version + "\nNew Version: " + retVal.tag_name,
                     {
@@ -1015,17 +1033,42 @@ var Cheat = class {
                             download: true,
                         },
                     }
-                ).then(e => {
+                );
+				localStorage.checkoff = true;
+				
+                  then(e => {
                     if(e == "download") {
-                        window.open(retVal.html_url, "_blank")
+                        window.open(retVal.html_url, "_blank");
                     }
                 });
-            });
+              }
         }).on("error", (err => {
             console.error("Error checking for update:", err);
         }));
-    }
-
+		}
+        );
+		document.addEventListener("keydown",(e)=>{
+		if (e.code === "KeyU" && e.altKey) {
+                swal(
+                    "Are you sure you want to check for updates?",
+                    "Doing so will reload the page",
+                    {
+                        buttons: {
+                            cancel: true,
+                            ok: true,
+                        },
+                    }
+                ).then(e => {
+                    if (e == "ok") {
+                        localStorage.removeItem("checkoff");
+                        location.reload();
+                    }
+                });
+            }
+		}
+  );
+}
+	
     /**
      * Limits array to unique values
      */
