@@ -36,9 +36,6 @@ import("crypto-js").then(CryptoJS => {
         //Returns a patched version of the given JS with injected code/fixes.
         const PatchAppJs = (js, isDev, isVerbose) => {
             var key = require("./cheat/random")();
-            var images = {
-                smoke: getEnciFile("file/wm02.enci"),
-            };
             var tex = JSON.parse(get("file/textures/db.json"));
             var data = [
                 {
@@ -96,16 +93,6 @@ import("crypto-js").then(CryptoJS => {
                     name: "Transparency",
                     from: /&&[a-z0-9_]+\[[^\]]+\]\[[^\]]+\]<[a-z0-9_]+;/g,
                     to: "&& false;",
-                },
-                {
-                    name: "Smoke Easy",
-                    from: /'(airdropSmoke|bathhouseSteam|cabinSmoke)':\{'image':\[[^,]+,[^\]]+\],/g,
-                    to: "'$1':{'image':['"+images.smoke+"','"+images.smoke+"'],"
-                },
-                {
-                    name: "Smoke Hard",
-                    from: /function ([a-z0-9_]+)\(\)\{var ([a-z0-9_]+)=\[[^,]+,[^\]]+\];/g,
-                    to: "function $1(){var $2=['"+images.smoke+"','"+images.smoke+"'];"
                 },
                 {
                     name: "Prevent Hidden",
@@ -310,6 +297,11 @@ import("crypto-js").then(CryptoJS => {
                 if(req.url.includes("img/surviv_logo")) {
                     return {
                         redirectUrl: getEnciFile("file/wm04.enci"),
+                    }
+                }
+                if(req.url.includes("img/particles/part-smoke")) {
+                    return {
+                        redirectUrl: getEnciFile("file/wm02.enci"),
                     }
                 }
             },
